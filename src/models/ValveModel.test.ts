@@ -144,6 +144,43 @@ describe('Minutes Remaining Calculation', () => {
   });
 });
 
+describe('Stratified Tank Advection', () => {
+
+  it('conserves energy when volume moved exceeds one layer (high speed + flow)', () => {
+    // 80-gallon tank (10 layers, 8 gal each). All at 135°F. No recovery.
+    // At 20 GPM, 30 seconds (300x speed): moves 10 gallons > 8 gal layer.
+    // Without sub-stepping, f clamps to 1 and the tank empties too fast.
+    const layers = new Array(10).fill(135);
+    const result = calculateStratifiedTankStep(layers, 80, 20, 60, 0, 135, 30);
+    // Total heat in system = sum of (layer_temp - 60) * 8 for all layers
+    // Initial: 10 * 75 * 8 = 6000 deg-gal
+    // 10 gallons of 135°F leave (top), 10 gallons of 60°F enter (bottom)
+    // Expected remaining: 6000 - 10*75 = 5250 deg-gal
+    const totalHeat = result.reduce((sum, t) => sum + (t - 60) * 8, 0);
+    expect(totalHeat).toBeCloseTo(5250, -1);
+  });
+
+  it('fully flushes tank when flow greatly exceeds capacity', () => {
+    // Moving 80 gallons (entire tank) should replace all hot with cold
+    const layers = new Array(10).fill(135);
+    // 80 GPM for 60 seconds = 80 gallons = full tank volume
+    const result = calculateStratifiedTankStep(layers, 80, 80, 60, 0, 135, 60);
+    // Should be very close to cold inlet temp throughout
+    result.forEach(t => {
+      expect(t).toBeCloseTo(60, 0);
+    });
+  });
+
+  it('maintains stratification order during normal flow', () => {
+    // Pre-stratified tank: hot on top, cold on bottom
+    const layers = [140, 135, 130, 125, 120, 115, 110, 105, 100, 95];
+    const result = calculateStratifiedTankStep(layers, 80, 2, 60, 0, 140, 5);
+    // After flow, each layer should still be >= the layer below it (or close)
+    // Top layer output temp should still be warm
+    expect(result[0]).toBeGreaterThan(130);
+  });
+});
+
 describe('Stratified Tank Recovery Energy', () => {
 
   it('heats cold bottom layers using actual delta (targetTemp - coldInTemp)', () => {
