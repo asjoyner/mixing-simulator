@@ -59,14 +59,27 @@ export function calculatePhysicalShuttleStep(
   tSetpoint: number,
   seconds: number
 ): number {
-  const k = 0.015;
+  // Time constant τ = 8 seconds per the Apollo MVA wax capsule spec.
+  // Normalizing drive by (tH - tC) makes τ independent of port temperatures:
+  //   dR/dt = drive / (τ * (tH - tC))
+  // where drive = tSetpoint - tMixed.
+  // Linearized: dR/dt = -(R - R_eq) / τ, giving a fixed 8-second response.
+  const tau = 8.0;
+  const tempSpread = tH - tC;
   let r = currentR;
   const subSteps = 10;
   const dt = seconds / subSteps;
 
   for (let i = 0; i < subSteps; i++) {
     const drive = calculateWaxDrive(r, tH, tC, tSetpoint);
-    r += (drive * k * dt);
+    if (Math.abs(tempSpread) > 0.01) {
+      r += (drive / (tau * tempSpread)) * dt;
+    } else {
+      // Ports are at the same temperature — drive directly toward setpoint compliance.
+      // If both ports equal setpoint, drive=0 and nothing changes.
+      // If both are cold, drive>0 pushes R toward 1 (hot); if both hot, toward 0.
+      r += drive > 0 ? (dt / tau) : drive < 0 ? -(dt / tau) : 0;
+    }
     r = Math.max(0, Math.min(1, r));
   }
   return r;
