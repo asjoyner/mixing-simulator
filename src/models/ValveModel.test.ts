@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculatePhysicalShuttleStep, calculateWaxDrive } from './ValveModel';
+import { calculatePhysicalShuttleStep, calculateWaxDrive, calculateTanklessStep } from './ValveModel';
 
 describe('Apollo Mixing Valve Physical Model', () => {
   
@@ -19,6 +19,52 @@ describe('Apollo Mixing Valve Physical Model', () => {
       r = calculatePhysicalShuttleStep(r, 100, 110, 125, 1);
     }
     expect(r).toBeCloseTo(1.0, 2);
+  });
+});
+
+describe('Rinnai RX199iN Tankless Heater Model', () => {
+
+  it('heats cold water to target when BTU capacity is sufficient', () => {
+    const result = calculateTanklessStep(140, 2.0, 60);
+    expect(result.temp).toBe(140);
+    expect(result.isBTULimited).toBe(false);
+  });
+
+  it('becomes BTU-limited at high flow rates', () => {
+    // At 11 GPM with 60°F inlet wanting 140°F: needs 11*500.4*80 = 440,352 BTU/h
+    // Max effective BTU is 199000*0.97 = 193,030. Should be limited.
+    const result = calculateTanklessStep(140, 11, 60);
+    expect(result.isBTULimited).toBe(true);
+    expect(result.temp).toBeLessThan(140);
+    expect(result.temp).toBeGreaterThan(60);
+  });
+
+  it('passes water through at inlet temp when inlet is already above target', () => {
+    // Tank pre-heats to 145°F, tankless target is 140°F.
+    // Heater cannot cool — should pass through at 145°F.
+    const result = calculateTanklessStep(140, 3.0, 145);
+    expect(result.temp).toBe(145);
+    expect(result.isBTULimited).toBe(false);
+  });
+
+  it('passes water through when inlet equals target', () => {
+    const result = calculateTanklessStep(140, 3.0, 140);
+    expect(result.temp).toBe(140);
+    expect(result.isBTULimited).toBe(false);
+  });
+
+  it('returns target temp at zero flow', () => {
+    const result = calculateTanklessStep(140, 0, 60);
+    expect(result.temp).toBe(140);
+    expect(result.isBTULimited).toBe(false);
+  });
+
+  it('computes correct BTU-limited output temperature', () => {
+    // At 5 GPM with 60°F inlet: maxDeltaT = 193030 / (5 * 500.4) = 77.14°F
+    // So max output = 60 + 77.14 = 137.14°F
+    const result = calculateTanklessStep(140, 5, 60);
+    expect(result.isBTULimited).toBe(true);
+    expect(result.temp).toBeCloseTo(137.14, 0);
   });
 });
 

@@ -29,14 +29,20 @@ export function calculateTanklessStep(
 ): { temp: number; isBTULimited: boolean } {
   if (flowRateGPM <= 0) return { temp: targetTemp, isBTULimited: false };
 
+  // If inlet water is already at or above the target, the heater doesn't fire.
+  // A real tankless heater has no cooling capability — it passes water through.
+  const requestedDeltaT = targetTemp - coldInTemp;
+  if (requestedDeltaT <= 0) {
+    return { temp: coldInTemp, isBTULimited: false };
+  }
+
   const maxBTU = 199000;
   const efficiency = 0.97;
   const effectiveBTU = maxBTU * efficiency;
-  
+
   // BTU Formula: BTU/h = GPM * 500 * deltaT
   // deltaT_max = effectiveBTU / (GPM * 500)
   const maxDeltaT = effectiveBTU / (flowRateGPM * 500.4);
-  const requestedDeltaT = targetTemp - coldInTemp;
 
   if (requestedDeltaT <= maxDeltaT) {
     return { temp: targetTemp, isBTULimited: false };
