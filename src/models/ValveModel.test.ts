@@ -20,6 +20,25 @@ describe('Apollo Mixing Valve Physical Model', () => {
     }
     expect(r).toBeCloseTo(1.0, 2);
   });
+
+  it('pins to COLD port when both sources are above setpoint', () => {
+    // Default initial condition: tH=tankless(140), tC=tank(135), setpoint=125.
+    // Both above setpoint → valve drives R toward 0 (fully cold/tank).
+    let r = 0.5;
+    for (let i = 0; i < 120; i++) {
+      r = calculatePhysicalShuttleStep(r, 140, 135, 125, 1);
+    }
+    expect(r).toBeCloseTo(0.0, 2);
+  });
+
+  it('settles to equilibrium when sources straddle setpoint', () => {
+    // tH=160, tC=100, setpoint=130 → equilibrium R = (130-100)/(160-100) = 0.5
+    let r = 0.0;
+    for (let i = 0; i < 120; i++) {
+      r = calculatePhysicalShuttleStep(r, 160, 100, 130, 1);
+    }
+    expect(r).toBeCloseTo(0.5, 1);
+  });
 });
 
 describe('Rinnai RX199iN Tankless Heater Model', () => {
