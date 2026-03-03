@@ -128,11 +128,13 @@ function App() {
   const minutesRemaining = calculateMinutesRemaining(tankLayers, tankCapacity, flowRate, recoveryRate, setpoint);
 
   const maxRinnaiBTU = 199000 * 0.97;
-  const maxTankBTU = recoveryRate * 8.34 * 90; 
+  // Tank BTU uses actual operating delta, consistent with the stratified tank model
+  const tankDeltaT = Math.max(0, tankTargetTemp - coldInTemp);
+  const maxTankBTU = recoveryRate * 8.34 * tankDeltaT;
   const totalSystemBTU = maxRinnaiBTU + maxTankBTU;
   let maxSystemGPM = totalSystemBTU / (500.4 * (setpoint - coldInTemp));
   if (tanklessSetpoint < setpoint) { maxSystemGPM = maxTankBTU / (500.4 * (setpoint - coldInTemp)); }
-  const maxOptimalGPM = (recoveryRate / 60) * (tankTargetTemp - coldInTemp) / (setpoint - coldInTemp);
+  const maxOptimalGPM = (recoveryRate / 60) * tankDeltaT / (setpoint - coldInTemp);
 
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600);
