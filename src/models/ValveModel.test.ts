@@ -96,9 +96,9 @@ describe('Rinnai RX199iN Tankless Heater Model', () => {
     expect(result.isBTULimited).toBe(false);
   });
 
-  it('returns target temp at zero flow', () => {
+  it('returns inlet temp at zero flow (stagnant water, heater off)', () => {
     const result = calculateTanklessStep(140, 0, 60);
-    expect(result.temp).toBe(140);
+    expect(result.temp).toBe(60);
     expect(result.isBTULimited).toBe(false);
   });
 

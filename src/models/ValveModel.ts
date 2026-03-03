@@ -27,7 +27,10 @@ export function calculateTanklessStep(
   flowRateGPM: number,
   coldInTemp: number
 ): { temp: number; isBTULimited: boolean } {
-  if (flowRateGPM <= 0) return { temp: targetTemp, isBTULimited: false };
+  // At zero flow the heater is off and stagnant water sits at inlet temperature.
+  // Returning targetTemp here would cause oscillation: the valve would see a
+  // phantom temperature change when it cuts flow to the tankless port.
+  if (flowRateGPM <= 0) return { temp: coldInTemp, isBTULimited: false };
 
   // If inlet water is already at or above the target, the heater doesn't fire.
   // A real tankless heater has no cooling capability — it passes water through.
