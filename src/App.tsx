@@ -131,13 +131,23 @@ function App() {
   const minutesRemaining = calculateMinutesRemaining(tankLayers, tankCapacity, flowRate, recoveryRate, setpoint);
 
   const maxRinnaiBTU = 199000 * 0.97;
-  // Tank BTU uses actual operating delta, consistent with the stratified tank model
   const tankDeltaT = Math.max(0, tankTargetTemp - coldInTemp);
-  const maxTankBTU = recoveryRate * 8.34 * tankDeltaT;
-  const totalSystemBTU = maxRinnaiBTU + maxTankBTU;
-  let maxSystemGPM = totalSystemBTU / (500.4 * (setpoint - coldInTemp));
-  if (tanklessSetpoint < setpoint) { maxSystemGPM = maxTankBTU / (500.4 * (setpoint - coldInTemp)); }
   const maxOptimalGPM = (recoveryRate / 60) * tankDeltaT / (setpoint - coldInTemp);
+
+  // Series-hybrid steady-state capacity: the tank sustains recoveryRate/60 GPM
+  // throughput. The Rinnai only boosts the fraction that needs it (from
+  // tankTargetTemp to tanklessSetpoint). The binding constraint is whichever
+  // component saturates first.
+  const tankSteadyStateGPM = recoveryRate / 60;
+  const rinnaiBoostDelta = setpoint - tankTargetTemp;
+  let maxSystemGPM: number;
+  if (rinnaiBoostDelta <= 0 || tanklessSetpoint <= tankTargetTemp) {
+    // Tank alone exceeds setpoint, or Rinnai can't help — tank-only capacity
+    maxSystemGPM = tankSteadyStateGPM;
+  } else {
+    const rinnaiLimitGPM = maxRinnaiBTU / (500.4 * rinnaiBoostDelta);
+    maxSystemGPM = Math.min(tankSteadyStateGPM, rinnaiLimitGPM);
+  }
 
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600);
