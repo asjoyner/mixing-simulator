@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { calculateStratifiedTankStep, calculatePhysicalShuttleStep, calculateTanklessStep } from './models/ValveModel';
+import { calculateStratifiedTankStep, calculatePhysicalShuttleStep, calculateTanklessStep, calculateMinutesRemaining } from './models/ValveModel';
 
 const getTempColor = (t: number) => {
   if (t <= 60) return '#3b82f6';
@@ -125,8 +125,7 @@ function App() {
   
   const tankFlow = leftPortIsHot ? (currentShuttleR * flowRate) : ((1 - currentShuttleR) * flowRate);
   const tanklessFlow = leftPortIsHot ? ((1 - currentShuttleR) * flowRate) : (currentShuttleR * flowRate);
-  const netDepletionGPM = tankFlow - (recoveryRate / 60);
-  const minutesRemaining = (netDepletionGPM > 0.01) ? ((tankLayers.filter(t => t > setpoint).length / 10) * tankCapacity) / (netDepletionGPM) : Infinity;
+  const minutesRemaining = calculateMinutesRemaining(tankLayers, tankCapacity, flowRate, recoveryRate, setpoint);
 
   const maxRinnaiBTU = 199000 * 0.97;
   const maxTankBTU = recoveryRate * 8.34 * 90; 
