@@ -13,17 +13,19 @@ describe('Apollo Mixing Valve Physical Model', () => {
     expect(drive).toBeLessThan(0); 
   });
 
-  it('pins to HOT port if both sources are colder than setpoint', () => {
+  it('pins to warmer source when both are colder than setpoint', () => {
+    // tH=100, tC=110, setpoint=125. Both below setpoint.
+    // Valve seeks the warmer source (110°F on cold port) → R pins to 0.
     let r = 0.5;
     for (let i = 0; i < 60; i++) {
       r = calculatePhysicalShuttleStep(r, 100, 110, 125, 1);
     }
-    expect(r).toBeCloseTo(1.0, 2);
+    expect(r).toBeCloseTo(0.0, 2);
   });
 
-  it('pins to COLD port when both sources are above setpoint', () => {
-    // Default initial condition: tH=tankless(140), tC=tank(135), setpoint=125.
-    // Both above setpoint → valve drives R toward 0 (fully cold/tank).
+  it('pins to cooler source when both are above setpoint', () => {
+    // tH=140, tC=135, setpoint=125. Both above setpoint.
+    // Valve seeks the cooler source (135°F on cold port) → R pins to 0.
     let r = 0.5;
     for (let i = 0; i < 120; i++) {
       r = calculatePhysicalShuttleStep(r, 140, 135, 125, 1);
@@ -38,6 +40,28 @@ describe('Apollo Mixing Valve Physical Model', () => {
       r = calculatePhysicalShuttleStep(r, 160, 100, 130, 1);
     }
     expect(r).toBeCloseTo(0.5, 1);
+  });
+
+  it('has consistent ~8-second time constant regardless of temperature spread', () => {
+    // For a first-order system, after 1 time constant (8s), the response
+    // should reach ~63.2% of the way to equilibrium.
+    // Test with a wide spread (tH=180, tC=60) and a narrow spread (tH=135, tC=125).
+    // Both should reach ~63.2% at 8 seconds.
+
+    // Wide spread: equilibrium R = (120-60)/(180-60) = 0.5
+    let rWide = 0.0;
+    rWide = calculatePhysicalShuttleStep(rWide, 180, 60, 120, 8);
+    const pctWide = rWide / 0.5; // fraction of way to equilibrium
+
+    // Narrow spread: equilibrium R = (130-125)/(135-125) = 0.5
+    let rNarrow = 0.0;
+    rNarrow = calculatePhysicalShuttleStep(rNarrow, 135, 125, 130, 8);
+    const pctNarrow = rNarrow / 0.5;
+
+    // Both should be near 63.2% (1 - 1/e)
+    const target = 1 - Math.exp(-1); // 0.632
+    expect(pctWide).toBeCloseTo(target, 1);
+    expect(pctNarrow).toBeCloseTo(target, 1);
   });
 });
 
