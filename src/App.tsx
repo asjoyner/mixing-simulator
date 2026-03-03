@@ -86,8 +86,11 @@ function App() {
   const [isTanklessLimited, setIsTanklessLimited] = useState(false);
   
   const getInitialShuttle = () => {
+    // Match the simulation loop's port assignment: with leftPortIsHot=false,
+    // tH = tankless (140), tC = tank (135). Both above setpoint (125),
+    // so the valve pins to cold (R→0), delivering 135°F from the tank.
     let r = 0.5;
-    for (let i = 0; i < 120; i++) { r = calculatePhysicalShuttleStep(r, 135, 140, 125, 1); }
+    for (let i = 0; i < 120; i++) { r = calculatePhysicalShuttleStep(r, 140, 135, 125, 1); }
     return r;
   };
   const [currentShuttleR, setCurrentShuttleR] = useState(getInitialShuttle());
@@ -128,11 +131,23 @@ function App() {
   const minutesRemaining = calculateMinutesRemaining(tankLayers, tankCapacity, flowRate, recoveryRate, setpoint);
 
   const maxRinnaiBTU = 199000 * 0.97;
-  const maxTankBTU = recoveryRate * 8.34 * 90; 
-  const totalSystemBTU = maxRinnaiBTU + maxTankBTU;
-  let maxSystemGPM = totalSystemBTU / (500.4 * (setpoint - coldInTemp));
-  if (tanklessSetpoint < setpoint) { maxSystemGPM = maxTankBTU / (500.4 * (setpoint - coldInTemp)); }
-  const maxOptimalGPM = (recoveryRate / 60) * (tankTargetTemp - coldInTemp) / (setpoint - coldInTemp);
+  const tankDeltaT = Math.max(0, tankTargetTemp - coldInTemp);
+  const maxOptimalGPM = (recoveryRate / 60) * tankDeltaT / (setpoint - coldInTemp);
+
+  // Series-hybrid steady-state capacity: the tank sustains recoveryRate/60 GPM
+  // throughput. The Rinnai only boosts the fraction that needs it (from
+  // tankTargetTemp to tanklessSetpoint). The binding constraint is whichever
+  // component saturates first.
+  const tankSteadyStateGPM = recoveryRate / 60;
+  const rinnaiBoostDelta = setpoint - tankTargetTemp;
+  let maxSystemGPM: number;
+  if (rinnaiBoostDelta <= 0 || tanklessSetpoint <= tankTargetTemp) {
+    // Tank alone exceeds setpoint, or Rinnai can't help — tank-only capacity
+    maxSystemGPM = tankSteadyStateGPM;
+  } else {
+    const rinnaiLimitGPM = maxRinnaiBTU / (500.4 * rinnaiBoostDelta);
+    maxSystemGPM = Math.min(tankSteadyStateGPM, rinnaiLimitGPM);
+  }
 
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600);
