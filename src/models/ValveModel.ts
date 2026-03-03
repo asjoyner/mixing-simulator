@@ -105,19 +105,21 @@ export function calculateStratifiedTankStep(
   
   let newLayers = [...layers];
 
-  // 1. FLOW: Water shifts upward
+  // 1. FLOW: Water shifts upward, sub-stepping if volume moved exceeds one layer.
+  // At high sim speeds (300x) and high flow (20 GPM), a single step can move
+  // multiple layers' worth of water. Sub-stepping keeps f <= 1 per iteration.
   if (volMoved > 0 && capacity > 0) {
-    // If we move more than one layer's worth, we should handle it, 
-    // but at 60x sim speed, 5GPM * 6s = 0.5G. Layer is 8G. 
-    // So usually volMoved < volLayer.
-    const f = Math.min(1, volMoved / volLayer);
-    
-    // Each layer i gets some water from layer i+1
-    for (let i = 0; i < n - 1; i++) {
-      newLayers[i] = layers[i] * (1 - f) + layers[i+1] * f;
+    const advectionSteps = Math.max(1, Math.ceil(volMoved / volLayer));
+    const subVolMoved = volMoved / advectionSteps;
+
+    for (let s = 0; s < advectionSteps; s++) {
+      const f = subVolMoved / volLayer; // guaranteed <= 1
+      const prev = [...newLayers];
+      for (let i = 0; i < n - 1; i++) {
+        newLayers[i] = prev[i] * (1 - f) + prev[i+1] * f;
+      }
+      newLayers[n-1] = prev[n-1] * (1 - f) + coldInTemp * f;
     }
-    // Bottom layer gets cold water from inlet
-    newLayers[n-1] = layers[n-1] * (1 - f) + coldInTemp * f;
   }
 
   // 2. RECOVERY: Heating from bottom
