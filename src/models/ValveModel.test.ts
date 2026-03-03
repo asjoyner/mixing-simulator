@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculatePhysicalShuttleStep, calculateWaxDrive, calculateTanklessStep, calculateMinutesRemaining } from './ValveModel';
+import { calculatePhysicalShuttleStep, calculateWaxDrive, calculateTanklessStep, calculateMinutesRemaining, calculateStratifiedTankStep } from './ValveModel';
 
 describe('Apollo Mixing Valve Physical Model', () => {
   
@@ -98,6 +98,49 @@ describe('Minutes Remaining Calculation', () => {
     const layers = new Array(10).fill(135);
     const result = calculateMinutesRemaining(layers, 80, 0, 40, 125);
     expect(result).toBe(Infinity);
+  });
+});
+
+describe('Stratified Tank Recovery Energy', () => {
+
+  it('heats cold bottom layers using actual delta (targetTemp - coldInTemp)', () => {
+    // 80-gallon tank, 10 layers (8 gal each). All at 60°F (cold).
+    // Recovery: 40 GPH, target 135°F, cold inlet 60°F → deltaT = 75°F
+    // Energy: (40/3600) * 3600 * 75 = 3000 deg-gal → heats 5 layers to target.
+    // But convection smooths the boundary, so we verify total energy conservation:
+    // Total heat added should be 3000 deg-gal = 375 degree-avg over 8 gal-layers.
+    const layers = new Array(10).fill(60);
+    const result = calculateStratifiedTankStep(layers, 80, 0, 60, 40, 135, 3600);
+    const totalHeatAdded = result.reduce((sum, t) => sum + (t - 60) * 8, 0);
+    // 40 GPH * 75°F deltaT = 3000 deg-gal of energy added
+    expect(totalHeatAdded).toBeCloseTo(3000, -1);
+    // Bottom layers should be hottest (stratified heat rises)
+    expect(result[9]).toBeGreaterThan(result[0]);
+  });
+
+  it('recovery energy scales with temperature delta, not hardcoded 90°F', () => {
+    // With cold inlet 35°F→135°F (delta 100°F): energy = 40 * 100 = 4000 deg-gal
+    // With cold inlet 80°F→135°F (delta 55°F):  energy = 40 * 55  = 2200 deg-gal
+    // The cold case should add more total energy than the warm case.
+    const coldLayers = new Array(10).fill(35);
+    const warmLayers = new Array(10).fill(80);
+    const resultCold = calculateStratifiedTankStep(coldLayers, 80, 0, 35, 40, 135, 3600);
+    const resultWarm = calculateStratifiedTankStep(warmLayers, 80, 0, 80, 40, 135, 3600);
+    const heatCold = resultCold.reduce((sum, t) => sum + (t - 35) * 8, 0);
+    const heatWarm = resultWarm.reduce((sum, t) => sum + (t - 80) * 8, 0);
+    expect(heatCold).toBeCloseTo(4000, -1);
+    expect(heatWarm).toBeCloseTo(2200, -1);
+    // Cold case adds ~1.8x more energy than warm case
+    expect(heatCold).toBeGreaterThan(heatWarm * 1.5);
+  });
+
+  it('does not heat above target temperature', () => {
+    const layers = new Array(10).fill(130);
+    // Layers at 130, target 135. Small gap. With enough energy, should reach 135 max.
+    const result = calculateStratifiedTankStep(layers, 80, 0, 60, 40, 135, 7200);
+    result.forEach(t => {
+      expect(t).toBeLessThanOrEqual(135.01);
+    });
   });
 });
 

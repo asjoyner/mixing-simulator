@@ -108,10 +108,11 @@ export function calculateStratifiedTankStep(
   }
 
   // 2. RECOVERY: Heating from bottom
-  // Recovery energy is typically a fixed BTU/hr.
-  // Standard 40k BTU gas heater can raise 40G by ~90F in 1 hour.
-  // We'll apply this energy starting from the bottom layers that are below target.
-  let energyToDeploy = (recoveryRateGPH / 3600) * seconds * 90; // Deg-Gallons equivalent
+  // recoveryRateGPH represents the heater's delivery rate calibrated to its actual
+  // operating delta (targetTemp - coldInTemp). Energy in degree-gallons per second:
+  //   (recoveryRateGPH / 3600) * (targetTemp - coldInTemp)
+  const recoveryDeltaT = Math.max(0, targetTemp - coldInTemp);
+  let energyToDeploy = (recoveryRateGPH / 3600) * seconds * recoveryDeltaT;
   
   // Apply energy from bottom to top
   for (let i = n - 1; i >= 0 && energyToDeploy > 0; i--) {
