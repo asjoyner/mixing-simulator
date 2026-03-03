@@ -1,5 +1,7 @@
 # Apollo Mixing Valve Physical Simulator (v8.1)
 
+**[Try the live simulator](https://asjoyner.github.io/mixing-simulator/)**
+
 ## Project Overview
 This high-fidelity simulator models a complex residential hot water architecture. It specifically evaluates a **Series-Hybrid** configuration where a primary **Stratified Storage Tank** feeds a secondary **Rinnai SENSEI RX199iN** Tankless heater, both managed by an **Apollo MVA (34A) Series 1" Mixing Valve**.
 
@@ -28,6 +30,6 @@ This high-fidelity simulator models a complex residential hot water architecture
 - **Time Controls:** A simulation clock and speed slider (defaulting to 1x, adjustable to 300x) for observing long-term thermal cycles.
 
 ## Project Structure
-- **Source:** `/_source/src/` (React/TS code and Physics models)
-- **Deployment:** `/` (Static production assets served by Apache)
-- **Tests:** `/_source/src/models/ValveModel.test.ts` (Verified edge cases and physical drive logic)
+- **Source:** `src/` (React/TS code and Physics models)
+- **Build Output:** `dist/` (Static production assets, committed for GitHub Pages)
+- **Tests:** `src/models/ValveModel.test.ts` (Verified edge cases and physical drive logic)
