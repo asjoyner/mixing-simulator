@@ -86,8 +86,11 @@ function App() {
   const [isTanklessLimited, setIsTanklessLimited] = useState(false);
   
   const getInitialShuttle = () => {
+    // Match the simulation loop's port assignment: with leftPortIsHot=false,
+    // tH = tankless (140), tC = tank (135). Both above setpoint (125),
+    // so the valve pins to cold (R→0), delivering 135°F from the tank.
     let r = 0.5;
-    for (let i = 0; i < 120; i++) { r = calculatePhysicalShuttleStep(r, 135, 140, 125, 1); }
+    for (let i = 0; i < 120; i++) { r = calculatePhysicalShuttleStep(r, 140, 135, 125, 1); }
     return r;
   };
   const [currentShuttleR, setCurrentShuttleR] = useState(getInitialShuttle());
