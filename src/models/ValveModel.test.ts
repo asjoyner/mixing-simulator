@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculatePhysicalShuttleStep, calculateWaxDrive, calculateTanklessStep } from './ValveModel';
+import { calculatePhysicalShuttleStep, calculateWaxDrive, calculateTanklessStep, calculateMinutesRemaining } from './ValveModel';
 
 describe('Apollo Mixing Valve Physical Model', () => {
   
@@ -65,6 +65,39 @@ describe('Rinnai RX199iN Tankless Heater Model', () => {
     const result = calculateTanklessStep(140, 5, 60);
     expect(result.isBTULimited).toBe(true);
     expect(result.temp).toBeCloseTo(137.14, 0);
+  });
+});
+
+describe('Minutes Remaining Calculation', () => {
+  it('uses total flow rate for depletion, not just valve tank port flow', () => {
+    // 80-gallon tank, all 10 layers above setpoint (125°F), recovery 40 GPH
+    const layers = new Array(10).fill(135);
+    // At 2.5 GPM demand: net depletion = 2.5 - (40/60) = 2.5 - 0.667 = 1.833 GPM
+    // Hot gallons = 80, so minutes = 80 / 1.833 ≈ 43.6
+    const result = calculateMinutesRemaining(layers, 80, 2.5, 40, 125);
+    expect(result).toBeCloseTo(43.6, 0);
+  });
+
+  it('returns Infinity when recovery rate exceeds demand', () => {
+    const layers = new Array(10).fill(135);
+    // 0.5 GPM demand, 40 GPH recovery = 0.667 GPM. Recovery > demand.
+    const result = calculateMinutesRemaining(layers, 80, 0.5, 40, 125);
+    expect(result).toBe(Infinity);
+  });
+
+  it('accounts for partially depleted tank (some layers below setpoint)', () => {
+    // 5 of 10 layers above setpoint = 40 gallons hot in an 80-gallon tank
+    const layers = [135, 135, 135, 135, 135, 100, 100, 100, 100, 100];
+    // At 5 GPM, recovery 40 GPH: net = 5 - 0.667 = 4.333 GPM
+    // Minutes = 40 / 4.333 ≈ 9.23
+    const result = calculateMinutesRemaining(layers, 80, 5, 40, 125);
+    expect(result).toBeCloseTo(9.23, 0);
+  });
+
+  it('returns Infinity at zero flow', () => {
+    const layers = new Array(10).fill(135);
+    const result = calculateMinutesRemaining(layers, 80, 0, 40, 125);
+    expect(result).toBe(Infinity);
   });
 });
 
