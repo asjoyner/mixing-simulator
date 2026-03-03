@@ -166,8 +166,9 @@ export function calculateMinutesRemaining(
   recoveryRateGPH: number,
   setpoint: number
 ): number {
+  const hotGallons = (tankLayers.filter(t => t > setpoint).length / tankLayers.length) * tankCapacity;
+  if (hotGallons <= 0) return 0;
   const netDepletionGPM = flowRateGPM - (recoveryRateGPH / 60);
   if (netDepletionGPM <= 0.01) return Infinity;
-  const hotGallons = (tankLayers.filter(t => t > setpoint).length / tankLayers.length) * tankCapacity;
   return hotGallons / netDepletionGPM;
 }

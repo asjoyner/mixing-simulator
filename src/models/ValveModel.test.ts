@@ -142,6 +142,13 @@ describe('Minutes Remaining Calculation', () => {
     const result = calculateMinutesRemaining(layers, 80, 0, 40, 125);
     expect(result).toBe(Infinity);
   });
+
+  it('returns 0 when tank is exhausted, even if recovery exceeds demand', () => {
+    // All layers below setpoint, low flow (0.5 GPM < 40 GPH / 60 = 0.667 GPM)
+    const layers = new Array(10).fill(95);
+    const result = calculateMinutesRemaining(layers, 80, 0.5, 40, 125);
+    expect(result).toBe(0);
+  });
 });
 
 describe('Stratified Tank Advection', () => {
