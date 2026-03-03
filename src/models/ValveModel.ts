@@ -134,3 +134,21 @@ export function calculateStratifiedTankStep(
 
   return newLayers;
 }
+
+/**
+ * Calculates estimated minutes of setpoint-compliant hot water remaining.
+ * In the series-hybrid architecture, 100% of demand flows through the tank,
+ * so depletion is based on total flowRate, not just the valve's tank port flow.
+ */
+export function calculateMinutesRemaining(
+  tankLayers: number[],
+  tankCapacity: number,
+  flowRateGPM: number,
+  recoveryRateGPH: number,
+  setpoint: number
+): number {
+  const netDepletionGPM = flowRateGPM - (recoveryRateGPH / 60);
+  if (netDepletionGPM <= 0.01) return Infinity;
+  const hotGallons = (tankLayers.filter(t => t > setpoint).length / tankLayers.length) * tankCapacity;
+  return hotGallons / netDepletionGPM;
+}
