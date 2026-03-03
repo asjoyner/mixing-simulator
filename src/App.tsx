@@ -134,20 +134,13 @@ function App() {
   const tankDeltaT = Math.max(0, tankTargetTemp - coldInTemp);
   const maxOptimalGPM = (recoveryRate / 60) * tankDeltaT / (setpoint - coldInTemp);
 
-  // Series-hybrid steady-state capacity: the tank sustains recoveryRate/60 GPM
-  // throughput. The Rinnai only boosts the fraction that needs it (from
-  // tankTargetTemp to tanklessSetpoint). The binding constraint is whichever
-  // component saturates first.
-  const tankSteadyStateGPM = recoveryRate / 60;
-  const rinnaiBoostDelta = setpoint - tankTargetTemp;
-  let maxSystemGPM: number;
-  if (rinnaiBoostDelta <= 0 || tanklessSetpoint <= tankTargetTemp) {
-    // Tank alone exceeds setpoint, or Rinnai can't help — tank-only capacity
-    maxSystemGPM = tankSteadyStateGPM;
-  } else {
-    const rinnaiLimitGPM = maxRinnaiBTU / (500.4 * rinnaiBoostDelta);
-    maxSystemGPM = Math.min(tankSteadyStateGPM, rinnaiLimitGPM);
-  }
+  // At max system capacity, both heaters run at full power. The tank adds BTU
+  // to all water passing through (even as tank temp drops), and the Rinnai
+  // boosts the fraction routed through it. Total energy is additive.
+  const maxTankBTU = recoveryRate * 8.34 * tankDeltaT;
+  const totalSystemBTU = maxRinnaiBTU + maxTankBTU;
+  let maxSystemGPM = totalSystemBTU / (500.4 * (setpoint - coldInTemp));
+  if (tanklessSetpoint < setpoint) { maxSystemGPM = maxTankBTU / (500.4 * (setpoint - coldInTemp)); }
 
   const formatTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600);
