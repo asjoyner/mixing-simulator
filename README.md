@@ -33,3 +33,13 @@ This high-fidelity simulator models a complex residential hot water architecture
 - **Source:** `src/` (React/TS code and Physics models)
 - **Build Output:** `dist/` (Static production assets, committed for GitHub Pages)
 - **Tests:** `src/models/ValveModel.test.ts` (Verified edge cases and physical drive logic)
+
+## Development & Deployment
+After making changes to the source files, rebuild and commit the output:
+```bash
+npm run build    # builds to dist/
+npm run test     # runs vitest
+git add dist/ && git commit
+git push origin main
+```
+Pushing to `main` automatically deploys the simulator to [asjoyner.github.io/mixing-simulator](https://asjoyner.github.io/mixing-simulator/) via a GitHub Actions workflow (`.github/workflows/pages.yml`) that uploads the `dist/` directory to GitHub Pages.
