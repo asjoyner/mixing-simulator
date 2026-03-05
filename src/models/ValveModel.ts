@@ -142,12 +142,21 @@ export function calculateStratifiedTankStep(
     }
   }
 
-  // 3. CONVECTION (Simple): Hotter water below a colder layer rises instantly
+  // 3. CONVECTION (Buoyancy zone merge): When a lower layer is hotter than
+  // the layer above, find the full inversion zone and average all layers in it.
   for (let i = n - 1; i > 0; i--) {
-    if (newLayers[i] > newLayers[i-1]) {
-      const avg = (newLayers[i] + newLayers[i-1]) / 2;
-      newLayers[i] = avg;
-      newLayers[i-1] = avg;
+    if (newLayers[i] > newLayers[i - 1]) {
+      let top = i - 1;
+      let sum = newLayers[i] + newLayers[top];
+      let count = 2;
+      while (top > 0 && sum / count > newLayers[top - 1]) {
+        top--;
+        sum += newLayers[top];
+        count++;
+      }
+      const avg = sum / count;
+      for (let k = top; k <= i; k++) newLayers[k] = avg;
+      i = top;
     }
   }
 

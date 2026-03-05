@@ -221,6 +221,22 @@ describe('Stratified Tank Recovery Energy', () => {
     expect(heatCold).toBeGreaterThan(heatWarm * 1.5);
   });
 
+  it('buoyancy zone merge propagates heat through cold layers above', () => {
+    // 80-gallon tank, 10 layers. Bottom 5 at 135°F, top 5 at 60°F. No flow, no recovery.
+    // The inversion at layer 5 should merge upward through all cold layers above.
+    // Zone avg = (5*135 + 5*60) / 10 = 97.5, but merge stops when zone avg <= next layer.
+    // Here layers 0-5 merge to (135+60*5)/6 = 72.5, layers 6-9 stay at 135.
+    const layers = [60, 60, 60, 60, 60, 135, 135, 135, 135, 135];
+    const result = calculateStratifiedTankStep(layers, 80, 0, 60, 0, 135, 1);
+    // All bottom layers (6-9) stay at 135
+    expect(result[9]).toBeCloseTo(135, 1);
+    // Top layers were pulled up from 60 by the merge
+    expect(result[0]).toBeGreaterThan(60);
+    // Energy conserved: total should be 5*75*8 = 3000 deg-gal
+    const totalHeat = result.reduce((sum, t) => sum + (t - 60) * 8, 0);
+    expect(totalHeat).toBeCloseTo(3000, -1);
+  });
+
   it('does not heat above target temperature', () => {
     const layers = new Array(10).fill(130);
     // Layers at 130, target 135. Small gap. With enough energy, should reach 135 max.
